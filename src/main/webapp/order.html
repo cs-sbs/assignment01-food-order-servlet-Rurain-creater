@@ -7,14 +7,140 @@
 <body>
 <h1>欢迎来外卖平台</h1>
 
-<h2>新增订单</h2>
-
-<form action="/order" method="post">
-    用户: <input name="customer"><br>
-    食物: <input name="food"><br>
-    数量: <input name="quantity"><br>
-    <input type="submit">
+<h2>查看菜单</h2>
+<a href="/menu">点击查看所有菜单</a><br>
+<form action="/menu" method="get">
+    搜索菜品: <input name="name" placeholder="输入菜品关键词"><br>
+    <input type="submit" value="搜索">
 </form>
 
+<h2>新增订单</h2>
+<form id="orderForm">
+    用户: <input name="customer" id="customer" required><br>
+    食物: <select id="foodSelect" required>
+    <option value="">-- 请选择菜品 --</option>
+</select><br>
+    数量: <input name="quantity" id="quantity" type="number" min="1" required><br>
+    <button type="button" onclick="submitOrder()">提交订单</button>
+</form>
+
+<div id="orderResult" style="margin-top:20px; padding:10px; border:1px solid #ccc; display:none;">
+    <strong>✅ 订单创建成功！</strong><br>
+    <span id="orderLink"></span>
+</div>
+
+<h2>查看订单详情</h2>
+<div>
+    订单ID: <input id="orderIdInput" placeholder="例如1001">
+    <button onclick="queryOrderDetail()">查询</button>
+</div>
+
+<script>
+    // 页面加载时获取菜单并填充下拉框
+    async function loadMenuOptions() {
+        try {
+            const response = await fetch('/menu');
+            const text = await response.text();
+            // 解析服务器返回的文本格式：
+            // Menu List:
+            // 1. Fried Rice - $8
+            // 2. Fried Noodles - $9
+            // 3. Burger - $10
+            const select = document.getElementById('foodSelect');
+            const lines = text.split('\n');
+            for (let line of lines) {
+                // 匹配格式：数字. 菜品名 - $价格
+                const match = line.match(/^\d+\.\s+(.+?)\s+-\s+\$/);
+                if (match) {
+                    const foodName = match[1].trim();
+                    const option = document.createElement('option');
+                    option.value = foodName;
+                    option.textContent = foodName;
+                    select.appendChild(option);
+                }
+            }
+        } catch (error) {
+            console.error('加载菜单失败:', error);
+            // 降级：手动添加默认选项
+            const select = document.getElementById('foodSelect');
+            ['Fried Rice', 'Fried Noodles', 'Burger'].forEach(food => {
+                const option = document.createElement('option');
+                option.value = food;
+                option.textContent = food;
+                select.appendChild(option);
+            });
+        }
+    }
+
+    // 提交订单（异步）
+    async function submitOrder() {
+        const customer = document.getElementById('customer').value.trim();
+        const food = document.getElementById('foodSelect').value;
+        const quantity = document.getElementById('quantity').value.trim();
+
+        if (!customer || !food) {
+            alert('请填写用户并选择食物');
+            return;
+        }
+        if (!quantity || isNaN(quantity) || parseInt(quantity) <= 0) {
+            alert('请输入有效的数量（正整数）');
+            return;
+        }
+
+        const params = new URLSearchParams();
+        params.append('customer', customer);
+        params.append('food', food);
+        params.append('quantity', quantity);
+
+        try {
+            const response = await fetch('/order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params.toString()
+            });
+
+            const text = await response.text();
+            const resultDiv = document.getElementById('orderResult');
+            const linkSpan = document.getElementById('orderLink');
+
+            if (response.ok) {
+                const match = text.match(/Order Created:\s*(\d+)/);
+                if (match) {
+                    const orderId = match[1];
+                    const link = document.createElement('a');
+                    link.href = `/order/${orderId}`;
+                    link.textContent = `Order #${orderId} (点击查看详情)`;
+                    link.target = '_blank';
+                    linkSpan.innerHTML = '';
+                    linkSpan.appendChild(link);
+                    resultDiv.style.display = 'block';
+                } else {
+                    linkSpan.textContent = text;
+                    resultDiv.style.display = 'block';
+                }
+            } else {
+                linkSpan.textContent = `错误: ${text}`;
+                resultDiv.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('提交订单失败:', error);
+            document.getElementById('orderLink').textContent = '网络错误，请重试';
+            document.getElementById('orderResult').style.display = 'block';
+        }
+    }
+
+    // 手动输入ID查询详情
+    function queryOrderDetail() {
+        const orderId = document.getElementById('orderIdInput').value.trim();
+        if (!orderId || isNaN(orderId)) {
+            alert('请输入有效的订单ID（数字）');
+            return;
+        }
+        window.location.href = '/order/' + orderId;
+    }
+
+    // 页面加载时执行
+    window.addEventListener('DOMContentLoaded', loadMenuOptions);
+</script>
 </body>
 </html>
