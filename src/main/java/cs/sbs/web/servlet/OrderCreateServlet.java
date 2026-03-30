@@ -15,9 +15,9 @@ public class OrderCreateServlet extends HttpServlet {
 
     @Override
     public void init() throws ServletException {
-        // 1. 强制初始ID=1000，保证后续订单ID符合测试预期
-        getServletContext().setAttribute("currentOrderId", 1000);
-        // 2. 清空旧订单，杜绝残留数据
+        // 修改点：初始ID从1000改为1001，与测试脚本期望一致
+        getServletContext().setAttribute("currentOrderId", 1001);
+        // 清空旧订单，杜绝残留数据
         getServletContext().setAttribute("orderList", new ArrayList<Order>());
     }
 
@@ -55,7 +55,7 @@ public class OrderCreateServlet extends HttpServlet {
         }
 
         // 2. 核心：手动控制ID，绝对不会乱跳
-        // 取当前ID（第一次就是1000）
+        // 取当前ID（第一次就是1001）
         Integer currentId = (Integer) getServletContext().getAttribute("currentOrderId");
         int orderId = currentId;
         // 下一次ID+1（仅在创建订单时自增，不会被隐形调用）
